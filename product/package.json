@@ -1,0 +1,14 @@
+{
+  "name": "product-service",
+  "version": "1.0.0",
+  "description": "Product catalogue microservice",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "author": "Laxmi Magadum",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}
