@@ -1,243 +1,145 @@
-# nodejs-microservices-example
+# Product Catalogue Microservice with CI/CD & Kubernetes
 
-Example of a monorepo with multiple Node.js microservices (using Docker, Docker-Compose and Kubernetes) that have separate CI/CD pipelines. 
+## 🧾 Project Overview
+This Node.js-based microservice serves as a versioned product catalogue API. Each version exposes different features via distinct Kubernetes deployments.
 
-This allows the convenience of a monorepo but with the flexibility of independent deployment schedules that makes microservices so good.
+It includes:
+- 🐳 Dockerized product microservice
+- ☸️ Kubernetes deployment with NGINX Ingress
+- 🚀 GitHub Actions for CI/CD to Docker Hub + Kubernetes
 
-This code repo accompanies my blog post on [creating separate CI/CD pipelines in a monorepo](https://www.codecapers.com.au/separate-cd-pipelines-for-microservices-in-a-monorepo/).
+---
 
-Learn about building with microservices with my book [Bootstrapping Microservices](http://bit.ly/2o0aDsP).
-
-[Support my work](https://www.codecapers.com.au/about#support-my-work)
-
-# Project layout
-
+## 📁 Folder Structure
 ```
-nodejs-microservices-example
-│   docker-compose.yml      -> Docker Compose file for development & testing.
-│   package-lock.json
-│   package.json
-│   README.md
-│
-├───.github
-│   └───workflows
-│           db.yaml         -> Deploys the Database, this workflow is manually invoked from GitHub Actions.
-│           gateway.yaml    -> CD pipeline for the gateway microservice.
-│           worker.yaml     -> CD pipeline for an example worker microservice.
-│
-├───db-fixture              -> Loads database fixtures into the database.
-│
-├───gateway                 -> Code and Docker files for the gateway microservice.
-│   │   Dockerfile-dev
-│   │   Dockerfile-prod
-│   │   nodemon.json
-│   │   package-lock.json
-│   │   package.json
-│   │   README.MD
-│   │
-│   └───src
-│           index.js
-│
-├───scripts                 -> Deployment helper scripts.
-│   │   build-image.sh        -> Builds a Docker image.
-│   │   push-image.sh         -> Publishes a Docker image.
-│   │
-│   └───kubernetes          -> Kubernetes configuration files.
-│           db.yaml           -> Database configuration.
-│           gateway.yaml      -> Gateway microservice configuration.
-│           worker.yaml       -> Worker microservice configuration.
-│
-└───worker                  -> Code and Docker files for the worker microservice.
-    │   .dockerignore
-    │   Dockerfile-dev
-    │   Dockerfile-prod
-    │   nodemon.json
-    │   package-lock.json
-    │   package.json
-    │   README.MD
-    │
-    └───src
-            index.js
+product-catalogue-microservice/
+├── product/                  # Product service source code
+├── kubernetes/               # Kubernetes YAMLs (v1, v1.1, v2)
+├── .github/workflows/        # GitHub Actions CI/CD pipeline
+└── README.md                 # This file
 ```
 
-# Setup
+---
 
-- You should have [Docker Desktop](https://www.docker.com/products/docker-desktop) installed.
-- To deploy you'll need [to create a container registry and Kubernetes cluster](https://www.codecapers.com.au/kub-cluster-quick-2/).
-  - I recomend using Digital Ocean or Azure, because they make Kubernetes easy or Digital Ocean because it makes Kubernetes cheap.
-  
-Clone the example repo:
+## ⚙️ Microservice Versions
+| Version | Endpoint Path | Description                                  |
+|---------|----------------|----------------------------------------------|
+| v1.0.0  | `/v1/products` | Basic product list                           |
+| v1.1.0  | `/v1-1/products` | Search with validation, error handling      |
+| v2.0.0  | `/v2/products` | Advanced filtering and improved design       |
 
+---
+
+## 🐳 Docker Setup
+### Build and Push
 ```bash
-git clone https://github.com/ashleydavis/nodejs-microservices-example.git
+cd product
+# Example: v1.1.0
+# Build image
+$ docker build -t <your-username>/product-service:v1.1.0 .
+
+# Push image
+$ docker push <your-username>/product-service:v1.1.0
 ```
 
-# Starting the application for development
+📌 Use Docker Hub username used in your GitHub Secrets.
 
-Follow the steps in this section to start the microservices application for developent using Docker.
+---
 
-Change directory to the microservices application:
-
+## ☸️ Kubernetes Deployment
+### Apply Namespaced YAMLs
 ```bash
-cd nodejs-microservices-example
+cd kubernetes
+kubectl apply -f v1/
+kubectl apply -f v1-1/
+kubectl apply -f v2/
+kubectl apply -f final-ingress-default.yaml
 ```
 
-Use Docker Compose to start the microservies application:
-
+### Verify Pods and Services
 ```bash
-docker compose up --build
+kubectl get pods -n default
+kubectl get svc -n default
+kubectl describe ingress product-ingress -n default
 ```
 
-A web page is now available:
+### Example Output
+```
+$ kubectl get pods -n default
+NAME                                    READY   STATUS    RESTARTS   AGE
+product-service-v1-1-xxx                1/1     Running   0          10m
+product-service-v1-xxx                  1/1     Running   0          10m
+product-service-v2-xxx                  1/1     Running   0          10m
+```
 
-    http://127.0.0.1:4000
+---
 
-An example REST APIs are available:
-
-    http://127.0.0.1:4000/api/data
-    http://127.0.0.1:4001/api/data
-
-The Mongodb database is available:
-
-    mongodb://127.0.0.1:4002
-
-This development environment is configured for [live reload](https://www.codecapers.com.au/live-reload-across-the-stack/) across microservices. Any changes you make to the code for the microservices in this code repository will cause those microservices to automatically reload themselves.
-
-# Deploy the application to Kubernetes
-
-At this point you need a Kubernetes cluster! For help creating one please see my book, [Bootstrapping Microservices](http://bit.ly/2o0aDsP).
-
-## Set environment variables
-
-These environment variables must be set before running these scripts:
-
-- CONTAINER_REGISTRY -> The hostname for your container registry.
-- REGISTRY_UN -> Username for your container registry.
-- REGISTRY_PW -> Password for your container registry.
-- VERSION -> The version of the software you are releasing, used to tag the Docker image.
-
-## Build, publish and deploy
-
-Before running each script, please ensure it is flagged as executable, eg:
-
+## 🌐 Testing the Endpoints
+### cURL (WSL or terminal)
 ```bash
-chmod +x ./scripts/build-image.sh
+curl http://localhost/v1/products
+curl http://localhost/v1-1/products
+curl http://localhost/v2/products
 ```
 
-Build Docker images:
+### Postman
+- Method: `GET`
+- URL: `http://localhost/v1/products`, etc.
+- Ensure Docker Desktop & Kubernetes are running
 
+---
+
+## 🔄 CI/CD via GitHub Actions
+### File: `.github/workflows/ci-cd.yml`
+This pipeline:
+- Triggers on push to `main`
+- Builds & pushes Docker image tagged with commit SHA
+- Applies the new image to the v1 deployment via `kubectl set image`
+
+---
+
+## 🔐 GitHub Secrets Required
+Go to: `Repo > Settings > Secrets and Variables > Actions`
+
+| Name                | Value Description                        |
+|---------------------|------------------------------------------|
+| DOCKERHUB_USERNAME | Docker Hub username                       |
+| DOCKERHUB_TOKEN    | Docker Hub access token                   |
+| KUBE_CONFIG_DATA   | Output of `cat ~/.kube/config \| base64 -w 0`      |
+
+📌 Use base64 encoded kubeconfig as one line.
+
+---
+
+## 🧪 Deployment Verification
+1. Push changes to main
+2. Watch the Actions tab
+3. After success:
 ```bash
-./scripts/build-image.sh worker
-./scripts/build-image.sh gateway
+curl http://localhost/v1-1/products
 ```
 
-Publish Docker images to your container registry:
-
-```bash
-./scripts/push-image.sh worker
-./scripts/push-image.sh gateway
+Expected:
+```json
+[
+  {"id":1,"name":"iPhone 15","price":999},
+  {"id":2,"name":"Samsung Galaxy S24","price":899},
+  {"id":3,"name":"OnePlus 12","price":799}
+]
 ```
 
-To deploy to Kubernetes you need [Kubectl configured to connect to your cluster](https://www.codecapers.com.au/kub-cluster-quick-2/).
+---
 
-To deploy the MongoDB database:
+## 📚 Author Notes
+This project follows a simplified DevOps deployment strategy suitable for beginner to intermediate projects.
 
-```bash
-kubectl apply -f ./scripts/kubernetes/db.yaml
-```
+- Built with Node.js + Express
+- Containerized and deployed with Docker & Kubernetes
+- Automated pipeline using GitHub Actions
 
-For the next bit you need Node.js isntalled so that you can use [Figit](https://www.npmjs.com/package/figit) to expand the templated Kubenetes configuration files.
+Feel free to fork, modify, and extend!
 
-Install dependencies (thus installling Figit):
+---
 
-```bash
-npm install
-```
-
-Then deploy the worker, using Figit to fill the blanks in the configuration file and piping the result to Kubectl:
-
-```bash
-npx figit ./scripts/kubernetes/worker.yaml --output yaml | kubectl apply -f -
-```
-
-Then deploy the gateway, again using Figit and Kubectl:
-
-```bash
-npx figit ./scripts/kubernetes/gateway.yaml --output yaml | kubectl apply -f -
-```
-
-## Check your deployment 
-
-Check the status of pods and deployments:
-
-```bash
-kubectl get pods
-kubectl get deployments
-```
-
-To find the IP address allocated to the web server, invoke:
-
-```bash
-kubectl get services
-```
-
-Pull out the EXTERNAL-IP address for the gateway service and put that into your web browser. You should see the hello world message in the browser.
-
-To check console logging for the Node.js app:
-
-```bash
-kubectl logs <pod-name>
-```
-
-Be sure the actual name of the pod for `<pod-name>` that was in the output from `kubectl get pods`.
-
-## Destroy the deployments
-
-To destroy all the deployments when you are done:
-
-```bash
-kubectl delete -f ./scripts/kubernetes/db.yaml
-```
-
-```bash
-npx figit ./scripts/kubernetes/worker.yaml --output yaml | kubectl delete -f -
-```
-
-```bash
-npx figit ./scripts/kubernetes/gateway.yaml --output yaml | kubectl delete -f -
-```
-
-## Continuous delivery with GitHub Actions
-
-This repo contains multiple GitHub Actions workflow configurations for automatic deployment to Kubernetes when the code for the each microservice changes (you can also manually invoke the workflows to trigger deployment even when the code hasn't changed).
-
-Note that these CD pipelines are configured to be independent. When you push code changes for the gateway microservice, only that microservice will be built and deployed. Likewise, when you push code for the worker microservice, only that microservice will be deployed.
-
-This allows us to have multiple microservices in a monorepo, but with the flexibility of separate deployment pipelines.
-
-### Environment variables
-
-To get the deployment pipelines working for your own code repository you will need to configure some environent variables as GitHub Secrets for your repository on GitHub.
-
-Add the environment variables specified above: CONTAINER_REGISTRY, REGISTRY_UN nad REGISTRY_PW.
-
-You will also need to add your Kubernetes configuration (encoded as base64) to a GitHub Secret called KUBE_CONFIG. 
-
-You can encode your local configuration like this:
-
-```bash
-cat ~/.kube/config | base64
-```
-
-Cut and paste the result into the KUBE_CONFIG secret.
-
-If you are working with Azure you can download and encode config using [the Azure CLI tool](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli):
-
-```bash
-az aks get-credentials --resource-group <resource-group> --name <cluster-name> -f - | base64
-```
-
-Cut and paste the result into the KUBE_CONFIG secret.
-
-
-<!-- Triggering CI/CD pipeline for test deployment -->
+## 📎 License
+MIT License © 2025 Laxmi Magadum
