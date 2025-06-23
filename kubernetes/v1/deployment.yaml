@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: product-service-v1
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: product
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: product
+        version: v1
+    spec:
+      containers:
+        - name: product-service
+          image: 8140476754/product-service:v1.0.0
+
+          ports:
+            - containerPort: 3000
+          resources:
+            limits:
+              memory: "256Mi"
+              cpu: "250m"
+            requests:
+              memory: "128Mi"
+              cpu: "100m"
