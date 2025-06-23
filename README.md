@@ -238,3 +238,6 @@ az aks get-credentials --resource-group <resource-group> --name <cluster-name> -
 ```
 
 Cut and paste the result into the KUBE_CONFIG secret.
+
+
+<!-- Triggering CI/CD pipeline for test deployment -->
